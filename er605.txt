@@ -10,7 +10,8 @@ ls -al /dev/sd*
 voucher location:
 /tmp/ndslog/vouchers.txt
 
-/mnt/usb/opennds/vouchers.txt
+/mnt/sda1/ndslog/vouchers.txt
+/mnt/sda1/ndslog/ndslog.log
 
 
 
