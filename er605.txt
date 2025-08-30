@@ -1,0 +1,17 @@
+F0-A7-31-92-AB-57
+kilopeach
+1f1fe2c52a6319dd
+
+http://openwrt.lan/cgi-bin/luci/
+
+show usb devices:
+ls -al /dev/sd*
+
+voucher location:
+/tmp/ndslog/vouchers.txt
+
+/mnt/usb/opennds/vouchers.txt
+
+
+
+/usr/lib/opennds/theme_voucher.sh
