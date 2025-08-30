@@ -7,8 +7,9 @@ http://openwrt.lan/cgi-bin/luci/
 show usb devices:
 ls -al /dev/sd*
 
-voucher location:
+#default voucher location:
 /tmp/ndslog/vouchers.txt
+
 
 /mnt/sda1/ndslog/vouchers.txt
 /mnt/sda1/ndslog/ndslog.log
@@ -16,3 +17,10 @@ voucher location:
 
 
 /usr/lib/opennds/theme_voucher.sh
+
+################################
+REFRESH LIST
+################################
+
+rm vouchers.txt
+wget https://raw.githubusercontent.com/Kil0peach/voucher/refs/heads/main/vouchers.txt
