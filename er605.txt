@@ -17,10 +17,15 @@ ls -al /dev/sd*
 
 
 /usr/lib/opennds/theme_voucher.sh
+--------------------------------------
+mountpoint="/mnt/sda1"
+logdir="$mountpoint/ndslog/"
+logname="ndslog.log"
 
 ################################
 REFRESH LIST
 ################################
 
+cd /mnt/sda1/ndslog
 rm vouchers.txt
 wget https://raw.githubusercontent.com/Kil0peach/voucher/refs/heads/main/vouchers.txt
