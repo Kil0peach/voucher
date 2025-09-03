@@ -103,14 +103,14 @@ check_voucher() {
 		voucher_time_limit=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)#\6#")
 		voucher_first_punched=$(echo 	-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)#\7#")
 		voucher_linked_mac=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)#\8#")
-		
+
 		# Set limits according to voucher
 		upload_rate=$voucher_rate_up
 		download_rate=$voucher_rate_down
 		upload_quota=$voucher_quota_up
 		download_quota=$voucher_quota_down
 
-		if [ "$voucher_linked_mac" != "0" ] && [ "$voucher_linked_mac" != "$clientmac" ]; then
+		if [ $voucher_linked_mac -neq 0 ] && [ "$voucher_linked_mac" != "$clientmac" ]; then
 			#echo "Voucher is linked to another device - please use the correct device <br>"
 			return 1
 		fi
@@ -121,9 +121,12 @@ check_voucher() {
 			voucher_expiration=$(($current_time + $voucher_time_limit * 60))
 			# Override session length according to voucher
 			sessiontimeout=$voucher_time_limit
-			sed -i -r "s/($voucher.*,)(0)/\1$current_time/" $voucher_roll
-			sed -i -r "s/^($voucher,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,)[^,]*/\1$current_time/" $voucher_roll
-			sed -i -r "s/($voucher.*,)([0-9]+)/\1$voucher_linked_mac/" $voucher_roll
+			# Link voucher to this MAC if not already linked
+			if [ "$voucher_linked_mac" = "0" ]; then
+				voucher_linked_mac=$clientmac
+			fi
+			# Update the voucher roll
+			sed -i -r "s/^($voucher,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,)[^,]*,[^,]*/\1$current_time,$clientmac/" $voucher_roll
 			return 0
 		else
 			#echo "Voucher Already Used, Checking validity <br>"

@@ -10,7 +10,7 @@ quota_down=0
 quota_up=0
 validity=43200 #minutes
 
-voucher_qty=1000
+voucher_qty=10
 
 def randomstring(length=4):
     letters = string.ascii_uppercase + string.digits
