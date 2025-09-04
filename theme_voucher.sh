@@ -95,14 +95,23 @@ check_voucher() {
  	if [ $(echo -n $output | wc -w) -ge 1 ]; then 
 		#echo "Voucher Found - Checking Validity <br>"
 		current_time=$(date +%s)
-		voucher_token=$(echo 			-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)#\1#")
-		voucher_rate_down=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)#\2#")
-		voucher_rate_up=$(echo 			-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)#\3#")
-		voucher_quota_down=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)#\4#")
-		voucher_quota_up=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)#\5#")
-		voucher_time_limit=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)#\6#")
-		voucher_first_punched=$(echo 	-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)#\7#")
-		voucher_linked_mac=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)#\8#")
+		# voucher_token=$(echo 			-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\1#")
+		# voucher_rate_down=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\2#")
+		# voucher_rate_up=$(echo 			-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\3#")
+		# voucher_quota_down=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\4#")
+		# voucher_quota_up=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\5#")
+		# voucher_time_limit=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\6#")
+		# voucher_first_punched=$(echo 	-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\7#")
+		# voucher_linked_mac=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\8#")
+
+		voucher_token=$(echo "$output" | cut -d, -f1)
+		voucher_rate_down=$(( $(echo "$output" | cut -d, -f2) ))
+		voucher_rate_up=$(( $(echo "$output" | cut -d, -f3) ))
+		voucher_quota_down=$(( $(echo "$output" | cut -d, -f4) ))
+		voucher_quota_up=$(( $(echo "$output" | cut -d, -f5) ))
+		voucher_time_limit=$(( $(echo "$output" | cut -d, -f6) ))
+		voucher_first_punched=$(( $(echo "$output" | cut -d, -f7) ))
+		voucher_linked_mac=$(echo "$output" | cut -d, -f8)
 
 		# Set limits according to voucher
 		upload_rate=$voucher_rate_up
@@ -110,7 +119,7 @@ check_voucher() {
 		upload_quota=$voucher_quota_up
 		download_quota=$voucher_quota_down
 
-		if [ $voucher_linked_mac -neq 0 ] && [ "$voucher_linked_mac" != "$clientmac" ]; then
+		if [ "$voucher_linked_mac" != "0" ] && [ "$voucher_linked_mac" != "$clientmac" ]; then
 			#echo "Voucher is linked to another device - please use the correct device <br>"
 			return 1
 		fi
@@ -125,8 +134,8 @@ check_voucher() {
 			if [ "$voucher_linked_mac" = "0" ]; then
 				voucher_linked_mac=$clientmac
 			fi
-			# Update the voucher roll
-			sed -i -r "s/^($voucher,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,)[^,]*,[^,]*/\1$current_time,$clientmac/" $voucher_roll
+			# Update both 7th and 8th fields in one command
+			sed -i -E "s/^($voucher,([^,]*,){5})[^,]*,([^,]*)/\1$current_time,$clientmac/" "$voucher_roll"
 			return 0
 		else
 			#echo "Voucher Already Used, Checking validity <br>"
