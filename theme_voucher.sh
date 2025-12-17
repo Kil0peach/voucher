@@ -86,24 +86,31 @@ check_voucher() {
 		return 1
 	fi
 
+	##############################################################################################################################
+	# WARNING
+	# The voucher roll is written to on every login
+	# If its location is on router flash, this **WILL** result in non-repairable failure of the flash memory
+	# and therefore the router itself. This will happen, most likely within several months depending on the number of logins.
+	#
+	# The location is set here to be the same location as the openNDS log (logdir)
+	# By default this will be on the tmpfs (ramdisk) of the operating system.
+	# Files stored here will not survive a reboot.
 
 	voucher_roll="$logdir""vouchers.txt"
 
+	#
+	# In a production system, the mountpoint for logdir should be changed to the mount point of some external storage
+	# eg a usb stick, an external drive, a network shared drive etc.
+	#
+	# See "Customise the Logfile location" at the end of this file
+	#
+	##############################################################################################################################
 
 	output=$(grep $voucher $voucher_roll | head -n 1) # Store first occurence of voucher as variable
 	#echo "$output <br>" #Matched line
  	if [ $(echo -n $output | wc -w) -ge 1 ]; then 
 		#echo "Voucher Found - Checking Validity <br>"
 		current_time=$(date +%s)
-		# voucher_token=$(echo 			-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\1#")
-		# voucher_rate_down=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\2#")
-		# voucher_rate_up=$(echo 			-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\3#")
-		# voucher_quota_down=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\4#")
-		# voucher_quota_up=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\5#")
-		# voucher_time_limit=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\6#")
-		# voucher_first_punched=$(echo 	-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\7#")
-		# voucher_linked_mac=$(echo 		-n $output | sed -r "s#([a-zA-Z0-9-]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),(0|[0-9a-fA-F:]+)#\8#")
-
 		voucher_token=$(echo "$output" | cut -d, -f1)
 		voucher_rate_down=$(( $(echo "$output" | cut -d, -f2) ))
 		voucher_rate_up=$(( $(echo "$output" | cut -d, -f3) ))
@@ -112,7 +119,7 @@ check_voucher() {
 		voucher_time_limit=$(( $(echo "$output" | cut -d, -f6) ))
 		voucher_first_punched=$(( $(echo "$output" | cut -d, -f7) ))
 		voucher_linked_mac=$(echo "$output" | cut -d, -f8)
-
+		
 		# Set limits according to voucher
 		upload_rate=$voucher_rate_up
 		download_rate=$voucher_rate_down
@@ -130,10 +137,6 @@ check_voucher() {
 			voucher_expiration=$(($current_time + $voucher_time_limit * 60))
 			# Override session length according to voucher
 			sessiontimeout=$voucher_time_limit
-			# Link voucher to this MAC if not already linked
-			if [ "$voucher_linked_mac" = "0" ]; then
-				voucher_linked_mac=$clientmac
-			fi
 			# Update both 7th and 8th fields in one command
 			sed -i -E "s/^($voucher,([^,]*,){5})[^,]*,([^,]*)/\1$current_time,$clientmac/" "$voucher_roll"
 			return 0
@@ -185,7 +188,8 @@ voucher_validation() {
 		auth_success="
 			<p>
 				<big-red>
-					You are now logged in and have been granted access to the Internet.
+					You are now logged in and have been granted access to the Internet!<br>
+					If you are disconnected at any point, simply click sign-in to network again, accept and continue.<br>
 				</big-red>
 				<hr>
 			</p>
@@ -235,7 +239,7 @@ voucher_validation() {
 			echo "$auth_fail"
 		fi
 	else
-		echo "<big-red>Voucher is not Valid, click Continue to restart login<br></big-red>"
+		echo "<big-red>Voucher is not Valid or depleted, click Continue to restart login<br></big-red>"
 		echo "
 			<form>
 				<input type=\"button\" VALUE=\"Continue\" onClick=\"location.href='$originurl'\" >
@@ -246,6 +250,23 @@ voucher_validation() {
 	# Serve the rest of the page:
 	read_terms
 	footer
+}
+
+check_mac_previously_authenticated() {
+	voucher_roll="$logdir""vouchers.txt"
+	voucher_attached_mac=$(grep $clientmac $voucher_roll | head -n 1 | cut -d, -f8)
+	if [ "$voucher_attached_mac" = "$clientmac" ]; then
+		# MAC found in voucher roll
+		voucher=$(grep $clientmac $voucher_roll | head -n 1 | cut -d, -f1)
+		tos="accepted"
+		check_accept="checked"
+		voucher_code="$voucher"
+		voucher_validation
+		return 0
+	else
+		# MAC not found in voucher roll
+		return 1
+	fi
 }
 
 voucher_form() {
@@ -261,26 +282,35 @@ voucher_form() {
 	# and [voucher_code] is of course the unique voucher code for the current user
 
 	# Get the voucher code:
-
-	voucher_code=$(echo "$cpi_query" | awk -F "voucher%3d" '{printf "%s", $2}' | awk -F "%26" '{printf "%s", $1}')
+        voucher_code=$(echo "$cpi_query" | awk -F "voucher%3d" '{printf "%s", $2}' | awk -F "%26" '{printf "%s", $1}')
+        [ -n "$voucher_code" ] && echo " voucher: $voucher_code <br>"
+	
+	check_accept=""
+	if [ -z "$voucher_code" ]; then
+		check_mac_previously_authenticated
+		[ -n "$voucher_code" ] && echo "Your previous voucher: $voucher_code (May no longer be valid) <br>"
+	fi
 
 	echo "
 		<med-blue>
-			Welcome!
+			Welcome to Krishnakripa WiFi!
 		</med-blue><br>
 		<hr>
 		Your IP: $clientip <br>
-		Your MAC: $clientmac <br>
+		To receive vouchers contact administration.<br>
 		<hr>
-		<form action=\"/opennds_preauth/\" method=\"get\">
+		<form id=\"voucher_form\" action=\"/opennds_preauth/\" method=\"get\">
 			<input type=\"hidden\" name=\"fas\" value=\"$fas\"> 
-			<input type=\"checkbox\" name=\"tos\" value=\"accepted\" required> I accept the Terms of Service<br>
+			<input type=\"checkbox\" name=\"tos\" value=\"accepted\" $check_accept required> I accept the Terms of Service<br>
+			> Make sure to include hyphen<br>
+			> Voucher validity is ONE MONTH
+			<br>
 			Voucher #: <input type=\"text\" name=\"voucher\" value=\"$voucher_code\" required><br>
 			<input type=\"submit\" value=\"Connect\" >
 		</form>
 		<br>
+		<br>
 	"
-
 	read_terms
 	footer
 }
@@ -467,8 +497,8 @@ sessiontimeout="0"
 # Set Rate and Quota values for the client
 # The session length, rate and quota values could be determined by this script, on a per client basis.
 # rates are in kb/s, quotas are in kB. - if set to 0 then defaults to global value).
-upload_rate="0"
-download_rate="0"
+upload_rate="5120"
+download_rate="5120"
 upload_quota="0"
 download_quota="0"
 
@@ -509,6 +539,6 @@ userinfo="$title"
 ##############################################################################################################################
 #Note: the default uses the tmpfs "temporary" directory to prevent flash wear.
 # Override the defaults to a custom location eg a mounted USB stick.
-#mountpoint="/mylogdrivemountpoint"
+#mountpoint="/mnt/sda1"
 #logdir="$mountpoint/ndslog/"
 #logname="ndslog.log"
