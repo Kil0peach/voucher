@@ -8,6 +8,21 @@
 # This must be changed to bash for use on generic Linux
 #
 
+# config for opennds at /etc/config/opennds
+# config opennds
+#         option faskey '4ff55c00cd6c6f00370844b881f93a79566a43d874a2094eafc67535590c3925'
+#         option login_option_enabled '3'
+#         option themespec_path '/usr/lib/opennds/theme_voucher.sh'
+#         option log_mountpoint '/mnt/sda1'
+#         option download_unrestricted_bursting '1'
+#         option upload_unrestricted_bursting '1'
+#         option max_download_bucket_size '50'
+#         option max_upload_bucket_size '50'
+#         option uploadrate '8192'
+#         option downloadrate '8192'
+#         option sessiontimeout '0'
+#         option authidletimeout '7200'
+
 # Title of this theme:
 title="theme_voucher"
 
