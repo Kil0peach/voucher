@@ -1,0 +1,79 @@
+#!/bin/sh
+
+# Default: show all columns
+filter="all"
+
+# Parse command line arguments
+if [ -n "$1" ]; then
+    case "$1" in
+	lease|l|L|LEASE)
+	    filter="lease"
+	    ;;
+        mac|MAC|m)
+            filter="mac"
+            ;;
+        i|I|ip|IP)
+            filter="ip"
+            ;;
+        help|--help|-h)
+            echo "Usage: $0 [filter]"
+            echo "Filters:"
+            echo "  mac    - Show MAC addresses"
+            echo "  ip     - Show IP addresses"
+	    echo "  lease  - Show DHCP Leases"
+            exit 0
+            ;;
+        *)
+            echo "Invalid filter: $1"
+            echo "Use 'mac' or 'ip'"
+            exit 1
+            ;;
+    esac
+fi
+
+awk -F',' -v filter="$filter" '
+BEGIN {    
+    # First read DHCP leases
+    while ((getline line < "/tmp/dhcp.leases") > 0) {
+        split(line, dhcp, " ")
+        dhcp_mac = dhcp[2]
+	ip = substr(dhcp[3], length(dhcp[3])-4, 5)
+        hostname = dhcp[4]
+	dhcp_start[dhcp_mac] = strftime("%Y-%m-%d %H:%M", dhcp[1])	
+        dhcp_user[dhcp_mac] = sprintf("%s", hostname)
+	dhcp_ip[dhcp_mac] = sprintf("%s", ip)
+
+	if (filter == "lease" && dhcp_start[dhcp_mac] != "") {
+            printf "%s IP=%-5s %s\n", dhcp_start[dhcp_mac], ip, hostname
+        }
+    }
+    close("/tmp/dhcp.leases")
+}
+
+$7 != 0 {
+    mac = $8
+    voucher = $1
+    expiration = strftime("%Y-%m-%d %H:%M", $7)
+
+    if (filter == "lease") { return 0 }
+    if (mac in dhcp_user) {
+	if (filter == "mac") {
+	    printf "%s %s %s %s\n", voucher, expiration, mac, dhcp_user[mac]
+	} else if (filter == "ip") {
+	    printf "%s %s IP=%-5s %s\n", voucher, expiration, dhcp_ip[mac], dhcp_user[mac]
+	} else {
+            printf "%s %s\n", voucher, dhcp_user[mac]
+        }
+    } else {
+	if (filter == "lease") {
+	    pass
+	} else if (filter == "mac") {
+	    printf "%s %-16s %s\n", voucher, expiration, mac, "-"
+	} else if (filter == "ip") {
+            printf "%s %-16s %s\n", voucher, expiration, "-"
+        } else if (filter == "all" && dhcp_user[mac] != "") {
+	    pass
+	}
+    }
+}
+' /mnt/sda1/ndslog/vouchers.txt
