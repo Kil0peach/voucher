@@ -1,0 +1,2 @@
+#!/bin/ash
+nano /mnt/sda1/ndslog/vouchers.txt
